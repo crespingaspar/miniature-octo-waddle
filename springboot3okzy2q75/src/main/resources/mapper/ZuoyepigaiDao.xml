@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.yb.dao.ZuoyepigaiDao">
+
+	<!-- 可根据自己的需求，是否要使用 -->
+    <resultMap type="com.yb.entity.ZuoyepigaiEntity" id="zuoyepigaiMap">
+        <result property="zuoyemingcheng" column="zuoyemingcheng"/>
+        <result property="kemu" column="kemu"/>
+        <result property="tupian" column="tupian"/>
+        <result property="xuehao" column="xuehao"/>
+        <result property="xingming" column="xingming"/>
+        <result property="chengji" column="chengji"/>
+        <result property="pingyu" column="pingyu"/>
+        <result property="pigaizhuangkuang" column="pigaizhuangkuang"/>
+        <result property="pigaishijian" column="pigaishijian"/>
+        <result property="gonghao" column="gonghao"/>
+        <result property="jiaoshixingming" column="jiaoshixingming"/>
+        <result property="crossuserid" column="crossuserid"/>
+        <result property="crossrefid" column="crossrefid"/>
+    </resultMap>
+
+	<select id="selectListVO"
+		resultType="com.yb.entity.vo.ZuoyepigaiVO" >
+		SELECT * FROM zuoyepigai  zuoyepigai         
+        <where>${ew.sqlSegment}</where>
+	</select>
+	
+	<select id="selectVO"
+		resultType="com.yb.entity.vo.ZuoyepigaiVO" >
+		SELECT  zuoyepigai.* FROM zuoyepigai  zuoyepigai 	
+ 		<where>${ew.sqlSegment}</where>
+	</select>
+
+    <select id="selectListView"
+		resultType="com.yb.entity.view.ZuoyepigaiView" >
+
+		SELECT  zuoyepigai.* FROM zuoyepigai  zuoyepigai 	        
+        <where>${ew.sqlSegment}</where>
+	</select>
+	
+	<select id="selectView"
+		resultType="com.yb.entity.view.ZuoyepigaiView" >
+		SELECT * FROM zuoyepigai  zuoyepigai <where>${ew.sqlSegment}</where>
+	</select>
+	
+
+
+</mapper>

@@ -1,0 +1,223 @@
+package com.yb.controller;
+
+import java.math.BigDecimal;
+import java.text.SimpleDateFormat;
+import java.text.ParseException;
+import java.util.*;
+import java.lang.*;
+import java.math.*;
+import com.yb.utils.*;
+import com.yb.service.*;
+import com.yb.entity.*;
+import com.yb.entity.view.*;
+import java.util.stream.Collectors;
+import jakarta.servlet.http.HttpServletRequest;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
+import com.baomidou.mybatisplus.core.conditions.Wrapper;
+import com.yb.annotation.IgnoreAuth;
+import com.yb.entity.ZuoyepigaiEntity;
+import com.yb.entity.view.ZuoyepigaiView;
+
+import com.yb.service.ZuoyepigaiService;
+import com.yb.utils.PageUtils;
+import com.yb.utils.R;
+import com.yb.utils.MPUtil;
+import com.yb.utils.MapUtils;
+import com.yb.utils.CommonUtil;
+import java.io.IOException;
+
+/**
+ * 作业批改
+ * 后端接口
+ * @author 
+ * @email 
+ * @date 2026-04-11 14:37:54
+ */
+@RestController
+@RequestMapping("/zuoyepigai")
+public class ZuoyepigaiController {
+    @Autowired
+    private ZuoyepigaiService zuoyepigaiService;
+
+
+
+
+
+
+
+
+
+
+    /**
+     * 后台列表
+     */
+    @RequestMapping("/page")
+    public R page(@RequestParam Map<String, Object> params,ZuoyepigaiEntity zuoyepigai,
+		HttpServletRequest request){
+		String tableName = request.getSession().getAttribute("tableName").toString();
+		if(tableName.equals("xuesheng")) {
+			zuoyepigai.setXuehao((String)request.getSession().getAttribute("username"));
+		}
+		if(tableName.equals("jiaoshi")) {
+			zuoyepigai.setGonghao((String)request.getSession().getAttribute("username"));
+		}
+        //设置查询条件
+        QueryWrapper<ZuoyepigaiEntity> ew = new QueryWrapper<ZuoyepigaiEntity>();
+
+
+        //查询结果
+		PageUtils page = zuoyepigaiService.queryPage(params, MPUtil.sort(MPUtil.between(MPUtil.likeOrEq(ew, zuoyepigai), params), params));
+        Map<String, String> deSens = new HashMap<>();
+        //给需要脱敏的字段脱敏
+        DeSensUtil.desensitize(page,deSens);
+        return R.ok().put("data", page);
+    }
+
+
+    /**
+     * 前台列表
+     */
+	@IgnoreAuth
+    @RequestMapping("/list")
+    public R list(@RequestParam Map<String, Object> params,ZuoyepigaiEntity zuoyepigai,
+                @RequestParam(required = false) Double chengjistart,
+                @RequestParam(required = false) Double chengjiend,
+                @RequestParam(required = false) @DateTimeFormat(pattern="yyyy-MM-dd HH:mm:ss") Date pigaishijianstart,
+                @RequestParam(required = false) @DateTimeFormat(pattern="yyyy-MM-dd HH:mm:ss") Date pigaishijianend,
+		HttpServletRequest request){
+        //设置查询条件
+        QueryWrapper<ZuoyepigaiEntity> ew = new QueryWrapper<ZuoyepigaiEntity>();
+        if(chengjistart!=null) ew.ge("chengji", chengjistart);
+        if(chengjiend!=null) ew.le("chengji", chengjiend);
+        if(pigaishijianstart!=null) ew.ge("pigaishijian", pigaishijianstart);
+        if(pigaishijianend!=null) ew.le("pigaishijian", pigaishijianend);
+
+        //查询结果
+		PageUtils page = zuoyepigaiService.queryPage(params, MPUtil.sort(MPUtil.between(MPUtil.likeOrEq(ew, zuoyepigai), params), params));
+        Map<String, String> deSens = new HashMap<>();
+        //给需要脱敏的字段脱敏
+        DeSensUtil.desensitize(page,deSens);
+        return R.ok().put("data", page);
+    }
+
+
+
+
+	/**
+     * 列表
+     */
+    @RequestMapping("/lists")
+    public R list( ZuoyepigaiEntity zuoyepigai){
+       	QueryWrapper<ZuoyepigaiEntity> ew = new QueryWrapper<ZuoyepigaiEntity>();
+      	ew.allEq(MPUtil.allEQMapPre( zuoyepigai, "zuoyepigai"));
+        return R.ok().put("data", zuoyepigaiService.selectListView(ew));
+    }
+
+	 /**
+     * 查询
+     */
+    @RequestMapping("/query")
+    public R query(ZuoyepigaiEntity zuoyepigai){
+        QueryWrapper< ZuoyepigaiEntity> ew = new QueryWrapper< ZuoyepigaiEntity>();
+ 		ew.allEq(MPUtil.allEQMapPre( zuoyepigai, "zuoyepigai"));
+		ZuoyepigaiView zuoyepigaiView =  zuoyepigaiService.selectView(ew);
+		return R.ok("查询作业批改成功").put("data", zuoyepigaiView);
+    }
+
+    /**
+     * 后台详情
+     */
+    @RequestMapping("/info/{id}")
+    public R info(@PathVariable("id") Long id){
+        ZuoyepigaiEntity zuoyepigai = zuoyepigaiService.getById(id);
+        Map<String, String> deSens = new HashMap<>();
+        //给需要脱敏的字段脱敏
+        DeSensUtil.desensitize(zuoyepigai,deSens);
+        return R.ok().put("data", zuoyepigai);
+    }
+
+    /**
+     * 前台详情
+     */
+	@IgnoreAuth
+    @RequestMapping("/detail/{id}")
+    public R detail(@PathVariable("id") Long id){
+        ZuoyepigaiEntity zuoyepigai = zuoyepigaiService.getById(id);
+        Map<String, String> deSens = new HashMap<>();
+        //给需要脱敏的字段脱敏
+        DeSensUtil.desensitize(zuoyepigai,deSens);
+        return R.ok().put("data", zuoyepigai);
+    }
+
+
+
+
+    /**
+     * 后台保存
+     */
+    @RequestMapping("/save")
+    public R save(@RequestBody ZuoyepigaiEntity zuoyepigai, HttpServletRequest request){
+        //ValidatorUtils.validateEntity(zuoyepigai);
+        zuoyepigaiService.save(zuoyepigai);
+        return R.ok().put("data",zuoyepigai.getId());
+    }
+
+    /**
+     * 前台保存
+     */
+    @RequestMapping("/add")
+    public R add(@RequestBody ZuoyepigaiEntity zuoyepigai, HttpServletRequest request){
+        //ValidatorUtils.validateEntity(zuoyepigai);
+        zuoyepigaiService.save(zuoyepigai);
+        return R.ok().put("data",zuoyepigai.getId());
+    }
+
+
+
+
+
+    /**
+     * 修改
+     */
+    @RequestMapping("/update")
+    @Transactional
+    public R update(@RequestBody ZuoyepigaiEntity zuoyepigai, HttpServletRequest request){
+        //ValidatorUtils.validateEntity(zuoyepigai);
+        //全部更新
+        zuoyepigaiService.updateById(zuoyepigai);
+        return R.ok();
+    }
+
+
+
+
+
+    /**
+     * 删除
+     */
+    @RequestMapping("/delete")
+    public R delete(@RequestBody Long[] ids){
+        zuoyepigaiService.removeBatchByIds(Arrays.asList(ids));
+        return R.ok();
+    }
+
+
+
+
+
+    // hasAlipay:否
+
+
+
+
+}
