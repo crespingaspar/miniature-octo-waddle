@@ -148,13 +148,39 @@ public class ChathelperController {
 
 
     /**
-     * 后台保存
+     * 保存聊天记录（接入DeepSeek自动回复 - 适配无userid版本）
      */
     @RequestMapping("/save")
     public R save(@RequestBody ChathelperEntity chathelper, HttpServletRequest request){
-        //ValidatorUtils.validateEntity(chathelper);
+        // 1. 保存用户的原始提问
+        // 这里的 setId 逻辑用于手动生成一个唯一的 ID，如果数据库是自增的，这一行可以注释掉
+        chathelper.setId(new Date().getTime() + (long)(Math.random() * 1000));
         chathelperService.save(chathelper);
-        return R.ok().put("data",chathelper.getId());
+
+        // 2. 只有当用户有提问（ask不为空）时，才触发 AI 回复
+        if (chathelper.getAsk() != null && !chathelper.getAsk().trim().isEmpty()) {
+            // 调用 DeepSeek 工具类获取回答
+            String aiReply = DeepSeekUtil.getChatResponse(chathelper.getAsk());
+
+            // 3. 构造 AI 回复实体
+            ChathelperEntity replyEntity = new ChathelperEntity();
+
+            // 手动设置回复消息的 ID（防止与上一条冲突，加 1）
+            replyEntity.setId(new Date().getTime() + (long)(Math.random() * 1000) + 1);
+
+            // AI 的话存入 reply 字段，ask 字段留空
+            replyEntity.setAsk("");
+            replyEntity.setReply(aiReply);
+
+            // 【关键】这里不再调用 setUserId 或 getUserid，避免报错
+
+            // 稍作延迟保存，确保在数据库中排序在用户提问之后
+            try { Thread.sleep(500); } catch (InterruptedException e) { e.printStackTrace(); }
+
+            chathelperService.save(replyEntity);
+        }
+
+        return R.ok();
     }
 
     /**
