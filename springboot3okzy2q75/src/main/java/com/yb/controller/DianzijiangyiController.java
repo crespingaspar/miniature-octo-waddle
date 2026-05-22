@@ -39,7 +39,7 @@ import com.yb.utils.CommonUtil;
 import java.io.IOException;
 import com.yb.service.StoreupService;
 import com.yb.entity.StoreupEntity;
-
+import com.yb.service.XuankexinxiService;
 /**
  * 电子讲义
  * 后端接口
@@ -55,7 +55,8 @@ public class DianzijiangyiController {
 
     @Autowired
     private StoreupService storeupService;
-
+    @Autowired
+    private XuankexinxiService xuankexinxiService;
 
 
 
@@ -104,6 +105,16 @@ public class DianzijiangyiController {
 		HttpServletRequest request){
         //设置查询条件
         QueryWrapper<DianzijiangyiEntity> ew = new QueryWrapper<DianzijiangyiEntity>();
+        Object tableNameObj = request.getSession().getAttribute("tableName");
+        if(tableNameObj!=null && "xuesheng".equals(String.valueOf(tableNameObj))) {
+            String xuehao = String.valueOf(request.getSession().getAttribute("username"));
+            List<XuankexinxiEntity> xuankeList = xuankexinxiService.list(new QueryWrapper<XuankexinxiEntity>().eq("xuehao", xuehao));
+            if(xuankeList==null || xuankeList.isEmpty()) {
+                return R.ok().put("data", new PageUtils(new ArrayList<>(), 0, Integer.parseInt(params.getOrDefault("limit","10").toString()), Integer.parseInt(params.getOrDefault("page","1").toString())));
+            }
+            Set<String> gonghaoSet = xuankeList.stream().map(XuankexinxiEntity::getGonghao).filter(StringUtils::isNotBlank).collect(Collectors.toSet());
+            ew.in("gonghao", gonghaoSet);
+        }
         if(clicktimestart!=null) ew.ge("clicktime", clicktimestart);
         if(clicktimeend!=null) ew.le("clicktime", clicktimeend);
         if(clicknumstart!=null) ew.ge("clicknum", clicknumstart);
@@ -169,6 +180,16 @@ public class DianzijiangyiController {
 	@IgnoreAuth
     @RequestMapping("/detail/{id}")
     public R detail(@PathVariable("id") Long id){
+        HttpServletRequest request = HttpContextUtils.getHttpServletRequest();
+        Object tableNameObj = request.getSession().getAttribute("tableName");
+        if(tableNameObj!=null && "xuesheng".equals(String.valueOf(tableNameObj))) {
+            String xuehao = String.valueOf(request.getSession().getAttribute("username"));
+            DianzijiangyiEntity temp = dianzijiangyiService.getById(id);
+            long count = xuankexinxiService.count(new QueryWrapper<XuankexinxiEntity>().eq("xuehao", xuehao).eq("gonghao", temp.getGonghao()));
+            if(count==0){
+                return R.error("未选课用户不可查看该电子讲义");
+            }
+        }
         DianzijiangyiEntity dianzijiangyi = dianzijiangyiService.getById(id);
         if(null==dianzijiangyi.getClicknum()){
             dianzijiangyi.setClicknum(0);

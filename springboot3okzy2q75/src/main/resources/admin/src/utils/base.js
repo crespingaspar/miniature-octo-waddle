@@ -9,7 +9,7 @@ const base = {
 	},
 	getProjectName(){
 		return {
-			projectName: "基于HarmonyOS智能教育辅导平台的设计与实现"
+			projectName: "智能教育学习平台"
 		} 
 	},
 	getUsersName(){

@@ -50,6 +50,9 @@
 						<span class="icon iconfont icon-zhifudingjin" :style='{"margin":"0 0px","fontSize":"16px","color":"#333","height":"auto"}'></span>
 						批量支付
 					</el-button>
+          <el-button class="btn18" v-if="canShowImportBtn" type="warning" @click="openImportDialog">
+            一键导入学生
+          </el-button>
 				</el-row>
 			</el-form>
 			<div :style='{"width":"100%","padding":"0","boxShadow":"none","borderRadius":"0"}'>
@@ -239,6 +242,42 @@
 		<el-dialog title="预览图" :visible.sync="previewVisible" width="50%">
 			<img :src="previewImg" alt="" style="width: 100%;">
 		</el-dialog>
+    <el-dialog title="导入学生" :visible.sync="importDialogVisible" width="620px">
+      <el-form :model="importForm" label-width="120px">
+        <el-form-item label="课程">
+          <el-select v-model="importForm.courseId" placeholder="请选择课程" style="width:100%">
+            <el-option v-for="item in courseOptions" :key="item.id" :label="item.kechengmingcheng+'('+item.kechenghao+')'" :value="item.id"></el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item label="每班人数"><el-input-number :min="1" v-model="importForm.classSize"></el-input-number></el-form-item>
+        <el-form-item label="开课时间"><el-date-picker v-model="importForm.startTime" type="datetime" value-format="yyyy-MM-dd HH:mm:ss"></el-date-picker></el-form-item>
+        <el-form-item label="班次间隔(分钟)"><el-input-number :min="0" v-model="importForm.intervalMinutes"></el-input-number></el-form-item>
+        <el-form-item label="Excel文件">
+          <input type="file" accept=".xls,.xlsx" @change="onImportFileChange"/>
+          <div style="margin-top:6px;color:#999;">模板必填：学号、姓名、班级；其余可选。密码留空默认123456，性别留空默认空，其余留空默认“无”。</div>
+          <el-button type="text" @click="downloadTemplate">下载Excel模板示例</el-button>
+        </el-form-item>
+      </el-form>
+      <span slot="footer">
+				<el-button @click="importDialogVisible=false">取消</el-button>
+				<el-button type="primary" @click="submitImport">开始导入</el-button>
+			</span>
+    </el-dialog>
+    <el-dialog title="导入结果提醒" :visible.sync="importResultVisible" width="680px">
+      <div v-if="importResultExisted.length">
+        <div style="margin-bottom:10px;color:#e6a23c;">以下学生已存在账号（不影响其他学生导入）：</div>
+        <el-table :data="importResultExisted" :row-class-name="importResultRowClass" border>
+          <el-table-column prop="xuehao" label="学号"></el-table-column>
+          <el-table-column prop="xingming" label="姓名"></el-table-column>
+          <el-table-column prop="banji" label="班级"></el-table-column>
+          <el-table-column prop="msg" label="说明"></el-table-column>
+        </el-table>
+      </div>
+      <div v-else>本次导入没有已存在账号的学生。</div>
+      <span slot="footer">
+				<el-button type="primary" @click="importResultVisible=false">我知道了</el-button>
+			</span>
+    </el-dialog>
 	</div>
 </template>
 
@@ -287,6 +326,12 @@
 				layouts: ["total","prev","pager","next","sizes","jumper"],
 				previewImg: '',
 				previewVisible: false,
+        importDialogVisible: false,
+        importResultVisible: false,
+        importResultExisted: [],
+        importFile: null,
+        importForm: {courseId:'', classSize:30, startTime:'', intervalMinutes:120},
+        courseOptions: []
 			};
 		},
 		created() {
@@ -312,7 +357,11 @@
 			role(){
 				return this.$storage.get('role')
 			},
-		},
+
+    canShowImportBtn() {
+      return this.tablename === 'jiaoshi' || this.role === '教师' || this.role === '管理员'
+      }
+    },
 		components: {
 			AddOrUpdate,
 			xuexijinduCrossAddOrUpdate,
@@ -487,6 +536,52 @@
 				this.sfshOptions = "是,否,待审核".split(',');
 				this.isPayOptions = "已支付,未支付".split(',')
 			},
+      openImportDialog() {
+        this.importDialogVisible = true
+        this.importFile = null
+        this.importForm = {courseId:'', classSize:30, startTime:'', intervalMinutes:120}
+        this.$http({url:'kechengxinxi/page', method:'get', params:{page:1,limit:1000}}).then(({data})=>{
+          this.courseOptions = data.code===0 ? data.data.list : []
+        })
+      },
+      onImportFileChange(e){
+        this.importFile = e.target.files[0] || null
+      },
+      downloadTemplate() {
+        const content = "学号\t姓名\t班级\t密码\t性别\t年龄\t手机号\t备考科目\t基础水平\t目标院校\n20260001\t张三\t计科1班\t\t\t20\t\t\t\t\n20260002\t李四\t计科2班\tabc123\t女\t21\t13800000002\t英语\t良好\t复旦大学"
+        const blob = new Blob([content], {type:'application/vnd.ms-excel;charset=utf-8;'})
+        const a = document.createElement('a')
+        a.href = URL.createObjectURL(blob)
+        a.download='学生导入模板.xls'
+        a.click()
+        URL.revokeObjectURL(a.href)
+      },
+      submitImport() {
+        if(!this.importForm.courseId) return this.$message.error('请选择课程')
+        if(!this.importFile) return this.$message.error('请上传Excel文件')
+        const formData = new FormData()
+        formData.append('file', this.importFile)
+        formData.append('courseId', this.importForm.courseId)
+        formData.append('classSize', this.importForm.classSize)
+        formData.append('startTime', this.importForm.startTime || '')
+        formData.append('intervalMinutes', this.importForm.intervalMinutes)
+        this.$http({url:'xuankexinxi/importStudents', method:'post', data:formData}).then(({data})=>{
+          if(data.code===0){
+            this.$message.success('导入成功，共' + data.count + '人')
+            this.importDialogVisible=false
+            this.importResultExisted = data.existedStudents || []
+            if(this.importResultExisted.length){
+              this.importResultVisible = true
+            }
+            this.getDataList()
+          } else {
+            this.$message.error(data.msg||'导入失败')
+          }
+        })
+      },
+      importResultRowClass() {
+        return 'import-exist-row'
+      },
 			search() {
 				this.pageIndex = 1;
 				this.getDataList();
@@ -1346,4 +1441,7 @@
 	.chartDialog /deep/ .el-dialog {
 		background: #fff;
 	}
+  .main-content /deep/ .import-exist-row {
+    background: #ffecec !important;
+  }
 </style>
